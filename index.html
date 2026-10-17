@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="やること">
+<meta name="apple-mobile-web-app-title" content="Todo">
 <meta name="theme-color" content="#010204">
-<title>やること</title>
+<title>Todo</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -138,7 +138,7 @@ h4:first-child{margin-top:0}
 <body>
 <div id="app">
   <div class="topbar">
-    <h1><svg class="logo" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue2)"><rect x="4" y="4" width="24" height="24" rx="7"/><path d="M10 16.5l4 4 8-9"/></svg>やること<span class="sub" id="syncdot"></span></h1>
+    <h1><svg class="logo" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue2)"><rect x="4" y="4" width="24" height="24" rx="7"/><path d="M10 16.5l4 4 8-9"/></svg>Todo<span class="sub" id="syncdot"></span></h1>
     <button class="iconbtn" id="btn_settings" aria-label="設定"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -155,9 +155,9 @@ h4:first-child{margin-top:0}
 <script>
 "use strict";
 /* ============================================================
-   やること — 1枚の HTML・ビルド不要。保存は端末内（localStorage）＋ Firebase の同期（ぼぶると同じ方式）
+   Todo（やること） — 1枚の HTML・ビルド不要。保存は端末内（localStorage）＋ Firebase の同期（ぼぶると同じ方式）
    ============================================================ */
-var APP_VERSION="1.0.0";
+var APP_VERSION="1.0.1";
 var KEY_DB="todo_v1";               // 端末内：やること本体
 var KEY_CLOUD="todo_v1_cloud";      // 端末内だけ：{config, code}。DB には入れない
 var CLOUD_COLLECTION="todo";
@@ -384,7 +384,7 @@ function openSettings(){
   }
   h+="<div class='note err' id='s_msg' style='margin-top:8px'></div>";
   h+="<h4>バックアップ</h4><div class='btnrow' style='margin-top:0'><button type='button' class='btn sm' id='s_export'>JSON を書き出す</button><button type='button' class='btn sm' id='s_import'>JSON から復元</button></div><input type='file' id='s_file' accept='application/json' style='display:none'>";
-  h+="<h4>このアプリ</h4><div class='note'>やること v"+APP_VERSION+"・保存は端末内（"+KEY_DB+"）"+(cfg?"＋クラウド":"")+"。中身はこの端末とあなたの Firebase にだけあります。</div>";
+  h+="<h4>このアプリ</h4><div class='note'>Todo v"+APP_VERSION+"・保存は端末内（"+KEY_DB+"）"+(cfg?"＋クラウド":"")+"。中身はこの端末とあなたの Firebase にだけあります。</div>";
   openModal("設定", h);
   if(cfg){
     $("s_syncnow").onclick=function(){ cloudPushSoon(0); toast("合わせました"); };

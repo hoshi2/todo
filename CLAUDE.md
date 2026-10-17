@@ -1,4 +1,4 @@
-# todo（やること）
+# Todo（やること）
 
 共通ルールの正本は `hoshi2/bob-bridge`。作業前に `../bob-bridge/AGENTS.md` を読み、その順番で `rules/` と `context/projects.md` を読む。
 
