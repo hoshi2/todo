@@ -56,9 +56,8 @@ button{cursor:pointer}
 .iconbtn .ic{width:22px;height:22px;display:block}
 .iconbtn:active{background:var(--card2)}
 
-/* 区分の切替（横一列・はみ出したら横に流す） */
-.tabs{display:flex;gap:6px;overflow-x:auto;margin:0 calc(-1 * var(--pad)) 14px;padding:2px var(--pad) 6px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
+/* 区分の切替（折り返して全部見せる。横スクロールだとスマホで4つ目以降と鉛筆が隠れるため） */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;padding:2px 0}
 .tabs button{white-space:nowrap;background:var(--card2);border:1px solid var(--line);color:var(--txt2);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex:0 0 auto}
 .tabs button .n{font-size:11px;color:var(--txt3);font-variant-numeric:tabular-nums}
 .tabs button.on{background:var(--blue-dim);border-color:var(--blue);color:var(--blue2);box-shadow:var(--glow-s)}
@@ -157,7 +156,7 @@ h4:first-child{margin-top:0}
 /* ============================================================
    Todo（やること） — 1枚の HTML・ビルド不要。保存は端末内（localStorage）＋ Firebase の同期（ぼぶると同じ方式）
    ============================================================ */
-var APP_VERSION="1.0.1";
+var APP_VERSION="1.0.2";
 var KEY_DB="todo_v1";               // 端末内：やること本体
 var KEY_CLOUD="todo_v1_cloud";      // 端末内だけ：{config, code}。DB には入れない
 var CLOUD_COLLECTION="todo";
