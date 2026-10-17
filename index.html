@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="やること">
+<meta name="theme-color" content="#010204">
+<title>やること</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>
+/* 色・字体・角丸は ぼぶる（hoshi2/bobru）の :root をそのまま使う。見た目を揃えるため */
+:root{
+  --bg:#010204; --bg2:#04070c; --card:#060910; --card2:#0b1018;
+  --line:rgba(120,190,255,.07); --line2:rgba(120,190,255,.14);
+  --txt:#f2f6fb; --txt2:#8d9bb0; --txt3:#4e5b70;
+  --green:#6fd6ff; --red:#ef6b66;
+  --blue:#22b8f0; --blue2:#6fd6ff; --blue-dim:rgba(34,184,240,.12);
+  --accent:var(--blue2);
+  --card-grad:linear-gradient(160deg,#080c14 0%,#04070c 100%);
+  --topline:linear-gradient(90deg,transparent,rgba(111,214,255,.55),transparent);
+  --glow:0 0 24px rgba(34,184,240,.30); --glow-s:0 0 12px rgba(34,184,240,.18);
+  --bg-glow:radial-gradient(900px 500px at 18% -10%,rgba(34,184,240,.07),transparent 60%);
+  --radius:14px; --radius-s:10px; --pad:16px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+html[data-theme="light"]{
+  --bg:#faf9f6; --bg2:#f0ece4; --card:#ffffff; --card2:#f0ece4;
+  --line:#e2ded5; --line2:#d2cdc2;
+  --txt:#1b1c1e; --txt2:#63605a; --txt3:#97938b;
+  --green:#2f6f52; --red:#a8443d;
+  --blue:#34527f; --blue2:#34527f; --blue-dim:color-mix(in srgb,#34527f 12%,transparent);
+  --card-grad:#ffffff; --topline:transparent; --glow:none; --glow-s:none; --bg-glow:none;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg-glow),var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  min-height:100vh; min-height:100dvh; padding-bottom:calc(40px + var(--sab)); overscroll-behavior-y:none;
+}
+input,select,textarea,button{font-family:inherit;font-size:16px;color:var(--txt)}
+button{cursor:pointer}
+#app{max-width:640px;margin:0 auto;padding:var(--pad);padding-top:calc(var(--pad) + var(--sat))}
+
+/* 上のバー */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 18px}
+.topbar h1{font-size:22px;margin:0;font-weight:700;display:flex;align-items:center;gap:9px}
+.topbar .sub{font-size:11px;color:var(--txt3);font-weight:500;margin-left:4px}
+.logo{width:26px;height:26px;flex:0 0 auto}
+.iconbtn{background:none;border:0;padding:6px;margin:0;color:var(--txt3);display:flex;align-items:center;border-radius:8px}
+.iconbtn .ic{width:22px;height:22px;display:block}
+.iconbtn:active{background:var(--card2)}
+
+/* 区分の切替（横一列・はみ出したら横に流す） */
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:0 calc(-1 * var(--pad)) 14px;padding:2px var(--pad) 6px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{white-space:nowrap;background:var(--card2);border:1px solid var(--line);color:var(--txt2);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.tabs button .n{font-size:11px;color:var(--txt3);font-variant-numeric:tabular-nums}
+.tabs button.on{background:var(--blue-dim);border-color:var(--blue);color:var(--blue2);box-shadow:var(--glow-s)}
+.tabs button.on .n{color:var(--blue2)}
+html[data-theme="light"] .tabs button.on{color:#fff;background:var(--blue)} html[data-theme="light"] .tabs button.on .n{color:#fff}
+.tabs button.edit{color:var(--txt3);padding:8px 11px}
+.tabs button.edit .ic{width:15px;height:15px}
+
+/* 入力欄 */
+.addrow{display:flex;gap:8px;margin-bottom:14px}
+.addrow input{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;outline:none;transition:border-color .15s}
+.addrow input:focus{border-color:var(--blue)}
+.addrow button{flex:0 0 auto;background:linear-gradient(135deg,var(--blue),var(--blue2));border:0;color:#03131c;border-radius:12px;padding:0 16px;font-weight:700;font-size:14px;box-shadow:var(--glow)}
+html[data-theme="light"] .addrow button{color:#fff}
+.addrow button:active{transform:translateY(1px)}
+
+/* 一覧 */
+.card{background:var(--card-grad);border:1px solid var(--line);border-radius:var(--radius);padding:4px 14px;margin-bottom:14px;position:relative}
+.card::before{content:"";position:absolute;left:14%;right:14%;top:0;height:1px;background:var(--topline);opacity:.7;pointer-events:none}
+.row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.chk{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);background:var(--bg2);margin-top:1px;display:flex;align-items:center;justify-content:center;padding:0;color:transparent;transition:.12s}
+.chk .ic{width:14px;height:14px}
+.row.done .chk{background:var(--blue);border-color:var(--blue);color:#03131c;box-shadow:var(--glow-s)}
+html[data-theme="light"] .row.done .chk{color:#fff}
+.row .t{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;font-size:15.5px;line-height:1.5;color:var(--txt);overflow-wrap:anywhere;white-space:pre-wrap}
+.row.done .t{color:var(--txt3);text-decoration:line-through}
+.row .x{flex:0 0 auto;background:none;border:0;color:var(--txt3);padding:2px 4px;font-size:18px;line-height:1}
+.empty{text-align:center;color:var(--txt3);font-size:13px;padding:28px 10px}
+
+/* 完了の畳み */
+.donehead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 2px 8px}
+.donehead button{background:none;border:0;color:var(--txt3);font-size:12.5px;font-weight:600;padding:6px 2px;display:flex;align-items:center;gap:5px}
+.donehead button .ic{width:14px;height:14px;transition:transform .15s}
+.donehead button.open .ic{transform:rotate(90deg)}
+.donehead .clear{color:var(--red)}
+
+/* 共通の部品 */
+.btn{display:block;width:100%;border:1px solid var(--line2);background:var(--card2);color:var(--txt);border-radius:11px;padding:12px;font-size:15px;font-weight:600;transition:.12s}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));border-color:transparent;color:#03131c;box-shadow:var(--glow)}
+html[data-theme="light"] .btn.primary{color:#fff}
+.btn.danger{background:transparent;border-color:color-mix(in srgb,var(--red) 55%,var(--line2));color:var(--red)}
+.btn.sm{padding:10px;font-size:13.5px;border-radius:9px}
+.btn[disabled]{opacity:.4;cursor:default}
+.btnrow{display:flex;gap:9px;margin-top:14px} .btnrow .btn{flex:1}
+.field{margin-bottom:13px}
+.field > label{display:block;font-size:12px;color:var(--txt2);margin-bottom:6px;font-weight:600}
+.field .hint{font-size:11.5px;color:var(--txt3);font-weight:500;margin-top:5px;line-height:1.5}
+input[type=text],select,textarea{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;color:var(--txt);outline:none}
+input[type=text]:focus,select:focus,textarea:focus{border-color:var(--blue)}
+textarea{min-height:84px;resize:vertical;line-height:1.5}
+.note{font-size:12.5px;color:var(--txt2);line-height:1.6}
+.note b{color:var(--txt)}
+.note.err{color:var(--red)}
+h4{font-size:12px;color:var(--txt3);margin:18px 0 8px;font-weight:600;letter-spacing:.04em}
+h4:first-child{margin-top:0}
+
+/* 区分の編集 */
+.catrow{display:flex;align-items:center;gap:6px;padding:6px 0}
+.catrow input{flex:1;min-width:0}
+.catrow .mv,.catrow .del{flex:0 0 auto;background:var(--card2);border:1px solid var(--line);color:var(--txt2);border-radius:8px;width:34px;height:38px;font-size:15px;padding:0}
+.catrow .del{color:var(--red)} .catrow .del[disabled]{color:var(--txt3);opacity:.5}
+.catrow .cnt{flex:0 0 auto;font-size:11px;color:var(--txt3);min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* 下から出る画面（ぼぶると同じ） */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--bg2);border:1px solid var(--line);border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;padding:20px 16px calc(24px + var(--sab));-webkit-overflow-scrolling:touch}
+.modal h3{margin:0 0 16px;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.modal .mclose{background:var(--card2);border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:18px;color:var(--txt2);line-height:1;padding:0}
+@media(min-width:560px){.modal-bg{align-items:center;padding:20px}.modal{border-radius:20px}}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 24px);background:var(--card2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:24px;font-size:13.5px;font-weight:600;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <h1><svg class="logo" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue2)"><rect x="4" y="4" width="24" height="24" rx="7"/><path d="M10 16.5l4 4 8-9"/></svg>やること<span class="sub" id="syncdot"></span></h1>
+    <button class="iconbtn" id="btn_settings" aria-label="設定"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <form class="addrow" id="addform" autocomplete="off">
+    <input type="text" id="addtext" placeholder="やることを書いて Enter" enterkeyhint="done">
+    <button type="submit">追加</button>
+  </form>
+  <div id="list"></div>
+  <div id="donebox"></div>
+</div>
+<div id="modal"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   やること — 1枚の HTML・ビルド不要。保存は端末内（localStorage）＋ Firebase の同期（ぼぶると同じ方式）
+   ============================================================ */
+var APP_VERSION="1.0.0";
+var KEY_DB="todo_v1";               // 端末内：やること本体
+var KEY_CLOUD="todo_v1_cloud";      // 端末内だけ：{config, code}。DB には入れない
+var CLOUD_COLLECTION="todo";
+var CLOUD_SDK=["https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js",
+               "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"];
+// 公開ページ（hoshi2.github.io）は ぼぶる・ロイログ・お金・習慣と保存領域が同じなので、そこにある Firebase の設定を使い回せる
+var SIBLING_KEYS=[["boburu_v1_cloud","ぼぶる"],["royCloud","ロイログ"],["stella-cloud","お金アプリ"],["p26-cloud","習慣アプリ"]];
+var CODE_MIN=20;                    // 手で決める合言葉は 20 文字以上（短いと当てられる）
+
+// 初期の区分。id を固定しておくと、2台が別々に初期化しても同期で二重にならない
+var DEFAULT_CATS=[["c_work","仕事（不動産）"],["c_private","プライベート"],["c_trade","トレード"],["c_later","後回し"],["c_buy","買うもの"]];
+
+/* ---------- 小道具 ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function now(){ return Date.now(); }
+var _toastT=0;
+function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(_toastT); _toastT=setTimeout(function(){ t.classList.remove("show"); },1800); }
+function fmtWhen(ms){ var d=new Date(ms); return (d.getMonth()+1)+"/"+d.getDate()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+
+/* ---------- データ ----------
+   DB = { v:1, cats:[{id,name,order,_m}], items:[{id,text,cat,done,doneAt,created,_m}], deleted:{id:消した時刻} }
+   _m = 最後に変えた時刻（ms）。同期で合わせるときは 1件ごとに新しい方が勝つ。
+   消したものは deleted に墓標を残し、相手側でも消える。 */
+var DB=null, cur=null, showDone=false;
+function emptyDB(){ return {v:1,cats:[],items:[],deleted:{}}; }
+function freshDB(){
+  var db=emptyDB(), t=now();
+  DEFAULT_CATS.forEach(function(c,i){ db.cats.push({id:c[0],name:c[1],order:i,_m:t}); });
+  return db;
+}
+function normalize(db){
+  if(!db||typeof db!=="object") db=emptyDB();
+  if(!Array.isArray(db.cats)) db.cats=[];
+  if(!Array.isArray(db.items)) db.items=[];
+  if(!db.deleted||typeof db.deleted!=="object") db.deleted={};
+  db.v=1; return db;
+}
+function loadDB(){
+  var raw=null; try{ raw=localStorage.getItem(KEY_DB); }catch(e){}
+  if(!raw){ DB=freshDB(); return; }
+  try{ DB=normalize(JSON.parse(raw)); }catch(e){ DB=freshDB(); }
+}
+function persist(){ try{ localStorage.setItem(KEY_DB, JSON.stringify(DB)); }catch(e){ toast("保存できませんでした（容量？）"); } }
+function save(){ persist(); render(); cloudPushSoon(); }
+function cats(){ return DB.cats.slice().sort(function(a,b){ return (a.order||0)-(b.order||0); }); }
+function catById(id){ for(var i=0;i<DB.cats.length;i++) if(DB.cats[i].id===id) return DB.cats[i]; return null; }
+function itemsOf(cid,done){ return DB.items.filter(function(x){ return x.cat===cid && !!x.done===done; }).sort(function(a,b){ return done ? (b.doneAt||0)-(a.doneAt||0) : (b.created||0)-(a.created||0); }); }
+function countOf(cid){ return DB.items.filter(function(x){ return x.cat===cid; }).length; }
+function openCount(cid){ return DB.items.filter(function(x){ return x.cat===cid && !x.done; }).length; }
+
+/* ---------- 操作（全部ここを通す。_m を押す） ---------- */
+function addItem(text){
+  text=String(text||"").trim(); if(!text) return null;
+  var it={id:uid(),text:text,cat:cur,done:false,doneAt:null,created:now(),_m:now()};
+  DB.items.push(it); save(); return it;
+}
+function toggleItem(id){
+  var it=DB.items.find(function(x){ return x.id===id; }); if(!it) return;
+  it.done=!it.done; it.doneAt=it.done?now():null; it._m=now(); save();
+}
+function updateItem(id,text,cid){
+  var it=DB.items.find(function(x){ return x.id===id; }); if(!it) return;
+  text=String(text||"").trim(); if(!text) return;
+  it.text=text; if(cid&&catById(cid)) it.cat=cid; it._m=now(); save();
+}
+function removeItem(id){
+  DB.items=DB.items.filter(function(x){ return x.id!==id; }); DB.deleted[id]=now(); save();
+}
+function clearDone(cid){
+  var t=now(), n=0;
+  DB.items=DB.items.filter(function(x){ if(x.cat===cid&&x.done){ DB.deleted[x.id]=t; n++; return false; } return true; });
+  save(); return n;
+}
+// 区分の編集はまとめて適用。list = [{id|null, name}] の順番が新しい順番
+function applyCats(list){
+  var t=now(), keep={};
+  list.forEach(function(c,i){
+    var name=String(c.name||"").trim()||("区分"+(i+1));
+    var ex=c.id?catById(c.id):null;
+    if(ex){ if(ex.name!==name||ex.order!==i){ ex.name=name; ex.order=i; ex._m=t; } keep[ex.id]=1; }
+    else { var id="c_"+uid(); DB.cats.push({id:id,name:name,order:i,_m:t}); keep[id]=1; }
+  });
+  // 一覧から外れた区分を消す。ただし中身が残っている区分は（画面で止めているが）念のため残す
+  DB.cats=DB.cats.filter(function(c){ if(keep[c.id]) return true; if(countOf(c.id)){ c.order=list.length; return true; } DB.deleted[c.id]=t; return false; });
+  if(!catById(cur)) cur=(cats()[0]||{}).id||null;
+  save();
+}
+
+/* ---------- 合わせる（同期の中身。純粋な関数。テストからも呼ぶ） ----------
+   戻り値 {db, changed:相手から取り込んで自分が変わった, ahead:自分の方が新しいものがある（送り返す）} */
+function mergeDB(local, remote){
+  local=normalize(local); remote=normalize(remote||emptyDB());
+  var changed=false, ahead=false;
+  var dead={}; Object.keys(local.deleted).forEach(function(k){ dead[k]=local.deleted[k]; });
+  Object.keys(remote.deleted).forEach(function(k){ if(!dead[k]||remote.deleted[k]>dead[k]) dead[k]=remote.deleted[k]; });
+  if(JSON.stringify(dead)!==JSON.stringify(local.deleted)) changed=true;
+  if(JSON.stringify(dead)!==JSON.stringify(remote.deleted)) ahead=true;
+  ["cats","items"].forEach(function(col){
+    var byId={}; local[col].forEach(function(r){ byId[r.id]=r; });
+    var seen={};
+    remote[col].forEach(function(r){
+      if(!r||!r.id) return; seen[r.id]=1;
+      var l=byId[r.id];
+      if(!l){ if(dead[r.id]&&dead[r.id]>=(r._m||0)) { return; } byId[r.id]=r; changed=true; }
+      else if((r._m||0)>(l._m||0)){ byId[r.id]=r; changed=true; }
+      else if((l._m||0)>(r._m||0)){ ahead=true; }
+    });
+    local[col].forEach(function(r){ if(!seen[r.id]) ahead=true; });
+    var out=[]; Object.keys(byId).forEach(function(id){ var r=byId[id]; if(dead[id]&&dead[id]>=(r._m||0)){ if(local[col].some(function(x){ return x.id===id; })) changed=true; return; } out.push(r); });
+    local[col]=out;
+  });
+  local.deleted=dead;
+  return {db:local, changed:changed, ahead:ahead};
+}
+
+/* ---------- 画面 ---------- */
+function render(){
+  if(!catById(cur)) cur=(cats()[0]||{}).id||null;
+  renderTabs(); renderList();
+}
+function renderTabs(){
+  var h="";
+  cats().forEach(function(c){
+    var n=openCount(c.id);
+    h+="<button type='button' data-cat='"+esc(c.id)+"' class='"+(c.id===cur?"on":"")+"'>"+esc(c.name)+(n?"<span class='n'>"+n+"</span>":"")+"</button>";
+  });
+  h+="<button type='button' class='edit' id='btn_cats' aria-label='区分を編集'><svg class='ic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 20h9'/><path d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'/></svg></button>";
+  $("tabs").innerHTML=h;
+}
+var ICON_CHK="<svg class='ic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7'/></svg>";
+var ICON_CHEV="<svg class='ic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg>";
+function rowHtml(it){
+  return "<div class='row"+(it.done?" done":"")+"' data-id='"+esc(it.id)+"'>"+
+    "<button type='button' class='chk' aria-label='完了'>"+ICON_CHK+"</button>"+
+    "<button type='button' class='t'>"+esc(it.text)+"</button>"+
+    (it.done?"<button type='button' class='x' aria-label='削除'>×</button>":"")+
+    "</div>";
+}
+function renderList(){
+  if(!cur){ $("list").innerHTML="<div class='card'><div class='empty'>区分がありません。右上の鉛筆から足して下さい</div></div>"; $("donebox").innerHTML=""; return; }
+  var open=itemsOf(cur,false), done=itemsOf(cur,true);
+  $("list").innerHTML="<div class='card'>"+(open.length?open.map(rowHtml).join(""):"<div class='empty'>"+(done.length?"全部終わりました":"まだ何もありません")+"</div>")+"</div>";
+  var h="";
+  if(done.length){
+    h+="<div class='donehead'><button type='button' id='btn_done' class='"+(showDone?"open":"")+"'>"+ICON_CHEV+"完了 "+done.length+"件</button>"+
+       (showDone?"<button type='button' id='btn_cleardone' class='clear'>完了をすべて消す</button>":"")+"</div>";
+    if(showDone) h+="<div class='card'>"+done.map(rowHtml).join("")+"</div>";
+  }
+  $("donebox").innerHTML=h;
+}
+
+/* ---------- 下から出る画面 ---------- */
+function openModal(title, bodyHtml){
+  $("modal").innerHTML="<div class='modal-bg' id='mbg'><div class='modal'><h3>"+esc(title)+"<button type='button' class='mclose' id='mclose'>×</button></h3>"+bodyHtml+"</div></div>";
+  $("mclose").onclick=closeModal;
+  $("mbg").addEventListener("click",function(e){ if(e.target.id==="mbg") closeModal(); });
+}
+function closeModal(){ $("modal").innerHTML=""; }
+
+// 1件の書き直し・移動・削除
+function openEdit(id){
+  var it=DB.items.find(function(x){ return x.id===id; }); if(!it) return;
+  var opts=cats().map(function(c){ return "<option value='"+esc(c.id)+"'"+(c.id===it.cat?" selected":"")+">"+esc(c.name)+"</option>"; }).join("");
+  openModal("書き直す",
+    "<div class='field'><label>内容</label><textarea id='e_text'>"+esc(it.text)+"</textarea></div>"+
+    "<div class='field'><label>区分</label><select id='e_cat'>"+opts+"</select></div>"+
+    "<div class='btnrow'><button type='button' class='btn danger' id='e_del'>削除</button><button type='button' class='btn primary' id='e_save'>保存</button></div>");
+  $("e_save").onclick=function(){ var t=$("e_text").value.trim(); if(!t){ toast("内容が空です"); return; } updateItem(id,t,$("e_cat").value); closeModal(); };
+  $("e_del").onclick=function(){ removeItem(id); closeModal(); toast("消しました"); };
+  setTimeout(function(){ var ta=$("e_text"); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); },50);
+}
+
+// 区分の編集（名前・順番・追加・削除）。中身が残っている区分は消せない
+function openCats(){
+  var work=cats().map(function(c){ return {id:c.id,name:c.name}; });
+  function draw(){
+    var h="<div id='catlist'>";
+    work.forEach(function(c,i){
+      var n=c.id?countOf(c.id):0;
+      h+="<div class='catrow' data-i='"+i+"'>"+
+        "<input type='text' value='"+esc(c.name)+"' placeholder='区分の名前' maxlength='20'>"+
+        "<span class='cnt'>"+(n?n+"件":"")+"</span>"+
+        "<button type='button' class='mv' data-d='-1' aria-label='上へ'"+(i===0?" disabled":"")+">↑</button>"+
+        "<button type='button' class='mv' data-d='1' aria-label='下へ'"+(i===work.length-1?" disabled":"")+">↓</button>"+
+        "<button type='button' class='del' aria-label='削除'"+(n?" disabled title='中身が残っているので消せません'":"")+">×</button>"+
+        "</div>";
+    });
+    h+="</div>";
+    h+="<button type='button' class='btn sm' id='c_add' style='margin-top:8px'>＋ 区分を足す</button>";
+    h+="<div class='note' style='margin-top:12px'>中身が残っている区分（件数つき）は消せません。先に完了にするか、他の区分へ移して下さい。</div>";
+    h+="<div class='btnrow'><button type='button' class='btn' id='c_cancel'>やめる</button><button type='button' class='btn primary' id='c_save'>保存</button></div>";
+    openModal("区分を編集", h);
+    var box=$("catlist");
+    function syncNames(){ box.querySelectorAll(".catrow").forEach(function(r){ work[+r.dataset.i].name=r.querySelector("input").value; }); }
+    box.addEventListener("click",function(e){
+      var b=e.target.closest("button"); if(!b||b.disabled) return;
+      var i=+b.closest(".catrow").dataset.i; syncNames();
+      if(b.classList.contains("mv")){ var j=i+(+b.dataset.d); var tmp=work[i]; work[i]=work[j]; work[j]=tmp; draw(); }
+      else if(b.classList.contains("del")){ if(work[i].id&&countOf(work[i].id)) return; work.splice(i,1); draw(); }
+    });
+    $("c_add").onclick=function(){ syncNames(); work.push({id:null,name:""}); draw(); var ins=box.querySelectorAll("input"); ins[ins.length-1].focus(); };
+    $("c_cancel").onclick=closeModal;
+    $("c_save").onclick=function(){ syncNames(); if(!work.length){ toast("区分は1つ以上必要です"); return; } applyCats(work); closeModal(); toast("区分を保存しました"); };
+  }
+  draw();
+}
+
+/* ---------- 設定（同期・バックアップ・版） ---------- */
+function openSettings(){
+  var cfg=loadCloudCfg(), sib=siblingCfg();
+  var h="<h4>端末間の同期</h4>";
+  if(cfg){
+    h+="<div class='note' id='cloudstatus'>"+cloudStatusHtml()+"</div>";
+    h+="<div class='btnrow'><button type='button' class='btn sm' id='s_syncnow'>今すぐ合わせる</button><button type='button' class='btn sm danger' id='s_disc'>解除</button></div>";
+  } else {
+    h+="<div class='note' style='margin-bottom:12px'>Firebase（Google のクラウド保存庫）に1件まるごと置き、スマホと Mac で同じ中身にします。同じ<b>合言葉</b>を入れた端末どうしがつながります。</div>";
+    if(sib) h+="<button type='button' class='btn primary' id='s_sib'>「"+esc(sib.from)+"」と同じ設定と合言葉を使う</button><div class='field'><div class='hint'>この端末の "+esc(sib.from)+" に入っている Firebase の設定"+(sib.code?"と合言葉":"")+"をそのまま使います。鍵の貼り直しは不要です。</div></div>";
+    else h+="<div class='note' style='margin-bottom:12px'>この端末の他のアプリ（ぼぶる など）に Firebase の設定が見つかりません。下に手で貼って下さい。</div>";
+    h+="<div class='field'><label>① Firebase の設定（firebaseConfig = { … } をまるごと）</label><textarea id='s_cfg' placeholder='{ apiKey: \"…\", projectId: \"…\", … }'></textarea></div>";
+    h+="<div class='field'><label>② 合言葉（同期コード。"+CODE_MIN+"文字以上）</label><input type='text' id='s_code' placeholder='両方の端末で同じものを入れる'><div class='hint'>短いと他人に当てられます。英数字を混ぜて長めに。</div></div>";
+    h+="<button type='button' class='btn' id='s_connect'>接続する</button>";
+  }
+  h+="<div class='note err' id='s_msg' style='margin-top:8px'></div>";
+  h+="<h4>バックアップ</h4><div class='btnrow' style='margin-top:0'><button type='button' class='btn sm' id='s_export'>JSON を書き出す</button><button type='button' class='btn sm' id='s_import'>JSON から復元</button></div><input type='file' id='s_file' accept='application/json' style='display:none'>";
+  h+="<h4>このアプリ</h4><div class='note'>やること v"+APP_VERSION+"・保存は端末内（"+KEY_DB+"）"+(cfg?"＋クラウド":"")+"。中身はこの端末とあなたの Firebase にだけあります。</div>";
+  openModal("設定", h);
+  if(cfg){
+    $("s_syncnow").onclick=function(){ cloudPushSoon(0); toast("合わせました"); };
+    $("s_disc").onclick=function(){ if(!confirm("同期を解除しますか？（この端末の中身は残ります。クラウドの中身も消えません）")) return; clearCloudCfg(); cloudStop(); closeModal(); render(); toast("同期を解除しました"); };
+  } else {
+    if(sib) $("s_sib").onclick=function(){
+      if(!sib.code){ $("s_cfg").value=JSON.stringify(sib.config,null,2); $("s_msg").textContent="設定を①に入れました。②に合言葉を入れて「接続する」を押して下さい"; $("s_msg").classList.remove("err"); return; }
+      startCloud(sib.config, sib.code);
+    };
+    $("s_connect").onclick=function(){
+      var config; try{ config=parseFirebaseConfig($("s_cfg").value); }catch(e){ $("s_msg").textContent=e.message; return; }
+      var code=$("s_code").value.trim();
+      if(code.length<CODE_MIN){ $("s_msg").textContent="合言葉は"+CODE_MIN+"文字以上にして下さい（いま "+code.length+" 文字）"; return; }
+      startCloud(config, code);
+    };
+  }
+  $("s_export").onclick=exportJson;
+  $("s_import").onclick=function(){ $("s_file").click(); };
+  $("s_file").onchange=function(e){ var f=e.target.files[0]; if(f) importJson(f); };
+}
+function startCloud(config, code){
+  saveCloudCfg({config:config, code:code}); closeModal(); toast("同期をオンにしました"); initCloud();
+}
+function exportJson(){
+  var blob=new Blob([JSON.stringify(DB,null,2)],{type:"application/json"});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  var d=new Date(); a.download="yarukoto-"+d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2)+".json";
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+function importJson(file){
+  var r=new FileReader();
+  r.onload=function(){
+    var data; try{ data=normalize(JSON.parse(r.result)); }catch(e){ toast("読めませんでした"); return; }
+    if(!confirm("いまの中身と合わせて取り込みます（新しい方が残ります）。よろしいですか？")) return;
+    var m=mergeDB(DB,data); DB=m.db; save(); closeModal(); toast("復元しました");
+  };
+  r.readAsText(file);
+}
+
+/* ---------- クラウド同期（Firebase Firestore。ぼぶると同じ考え方） ---------- */
+var CLOUD={db:null,unsub:null,ready:false,connecting:false,error:"",lastData:null,lastAt:null,timer:0};
+function loadCloudCfg(){ try{ var v=JSON.parse(localStorage.getItem(KEY_CLOUD)||"null"); return (v&&v.config&&v.code)?v:null; }catch(e){ return null; } }
+function saveCloudCfg(v){ try{ localStorage.setItem(KEY_CLOUD, JSON.stringify(v)); }catch(e){} }
+function clearCloudCfg(){ try{ localStorage.removeItem(KEY_CLOUD); }catch(e){} }
+function siblingCfg(){
+  for(var i=0;i<SIBLING_KEYS.length;i++){
+    try{ var v=JSON.parse(localStorage.getItem(SIBLING_KEYS[i][0])||"null");
+      if(v&&v.config&&v.config.projectId&&v.config.apiKey) return {config:v.config, code:(i===0&&v.code)?String(v.code):"", from:SIBLING_KEYS[i][1]};
+    }catch(e){}
+  }
+  return null;
+}
+function parseFirebaseConfig(text){
+  var m=String(text||"").match(/\{[\s\S]*\}/);
+  if(!m) throw new Error("設定が見つかりません。firebaseConfig = { … } をまるごと貼って下さい");
+  var obj; try{ obj=Function("return ("+m[0]+")")(); }catch(e){ throw new Error("設定の形が読めません"); }
+  if(!obj||!obj.projectId||!obj.apiKey) throw new Error("projectId か apiKey がありません");
+  var out={}; ["apiKey","authDomain","projectId","storageBucket","messagingSenderId","appId"].forEach(function(k){ if(obj[k]) out[k]=String(obj[k]); });
+  return out;
+}
+function cloudLoadSdk(){
+  if(window.firebase&&window.firebase.firestore) return Promise.resolve();
+  return CLOUD_SDK.reduce(function(p,src){ return p.then(function(){ return new Promise(function(res,rej){
+    var s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=function(){ rej(new Error("Firebase の部品を読み込めませんでした（ネット接続を確認）")); }; document.head.appendChild(s);
+  }); }); }, Promise.resolve());
+}
+function cloudRef(){ return CLOUD.db.collection(CLOUD_COLLECTION).doc(loadCloudCfg().code); }
+function cloudErrText(e){
+  var s=((e&&e.code)||"")+" "+((e&&e.message)||String(e||""));
+  if(/permission-denied|insufficient permissions/i.test(s)) return "Firebase の許可設定で「"+CLOUD_COLLECTION+"」が許されていません";
+  if(/unavailable|network|offline/i.test(s)) return "ネットにつながっていません（つながれば自動で再開）";
+  return (e&&e.message)||"不明なエラー";
+}
+function cloudSetError(e){ CLOUD.error=e?cloudErrText(e):""; if(e) console.error("cloud",e); cloudRefreshStatus(); }
+function cloudRefreshStatus(){
+  var el=$("cloudstatus"); if(el) el.innerHTML=cloudStatusHtml();
+  var dot=$("syncdot"); if(!dot) return;
+  if(!loadCloudCfg()) dot.textContent="";
+  else if(CLOUD.error) dot.textContent="同期エラー";
+  else dot.textContent=CLOUD.ready?"● 同期中":"接続中…";
+}
+function cloudStatusHtml(){
+  var cfg=loadCloudCfg(); if(!cfg) return "";
+  var h="合言葉 <b>"+esc(cfg.code)+"</b>・保存先 "+esc(cfg.config.projectId||"")+"<br>";
+  if(CLOUD.error) h+="<span style='color:var(--red)'>"+esc(CLOUD.error)+"</span>";
+  else h+=(CLOUD.ready?"● 接続済み。変えるたびに自動で送り、相手の変更は自動で届きます":"接続中…")+(CLOUD.lastAt?"（最終同期 "+esc(fmtWhen(CLOUD.lastAt))+"）":"");
+  return h;
+}
+function cloudStop(){ if(CLOUD.unsub){ CLOUD.unsub(); CLOUD.unsub=null; } CLOUD.ready=false; CLOUD.error=""; clearTimeout(CLOUD.timer); cloudRefreshStatus(); }
+// 起動時：設定があればつなぐ。クラウドが空なら自分を送り、有れば合わせてから見張る
+function initCloud(){
+  var cfg=loadCloudCfg(); if(!cfg||CLOUD.connecting) return;
+  CLOUD.connecting=true; CLOUD.ready=false; CLOUD.error=""; cloudRefreshStatus();
+  cloudLoadSdk().then(function(){
+    var app=firebase.apps.length?firebase.app():null;
+    if(app&&app.options&&app.options.projectId!==cfg.config.projectId) return app.delete().then(function(){ return firebase.initializeApp(cfg.config); });
+    return app||firebase.initializeApp(cfg.config);
+  }).then(function(app){
+    CLOUD.db=firebase.firestore(app);
+    return cloudRef().get();
+  }).then(function(snap){
+    var d=snap.exists?snap.data():null;
+    CLOUD.ready=true; CLOUD.connecting=false; cloudSetError(null);
+    if(d&&d.data) cloudApplyRemote(d); else cloudPushSoon(0);
+    if(CLOUD.unsub) CLOUD.unsub();
+    CLOUD.unsub=cloudRef().onSnapshot(function(s){
+      if(s.metadata&&s.metadata.hasPendingWrites) return;   // 自分の書き込みの返り
+      if(!s.exists) return;
+      var dd=s.data(); if(!dd||!dd.data||dd.data===CLOUD.lastData) return;
+      cloudApplyRemote(dd);
+    }, function(err){ cloudSetError(err); });
+  }).catch(function(e){ CLOUD.connecting=false; cloudSetError(e); });
+}
+function cloudApplyRemote(d){
+  var remote; try{ remote=JSON.parse(d.data); }catch(e){ return; }
+  CLOUD.lastData=d.data; CLOUD.lastAt=d.updatedAt||now();
+  var m=mergeDB(DB,remote); DB=m.db;
+  if(m.changed){ persist(); render(); }
+  if(m.ahead) cloudPushSoon(); else cloudRefreshStatus();
+}
+function cloudPushSoon(ms){
+  if(!loadCloudCfg()||!CLOUD.ready) return;
+  clearTimeout(CLOUD.timer);
+  CLOUD.timer=setTimeout(cloudPushNow, ms==null?700:ms);
+}
+function cloudPushNow(){
+  if(!loadCloudCfg()||!CLOUD.db) return;
+  var data=JSON.stringify(DB), t=now();
+  cloudRef().set({data:data,updatedAt:t,app:"todo",v:1}).then(function(){ CLOUD.lastData=data; CLOUD.lastAt=t; cloudSetError(null); }).catch(cloudSetError);
+}
+
+/* ---------- 起動 ---------- */
+function applyTheme(){
+  var dark=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", dark?"dark":"light");
+  var m=document.querySelector("meta[name=theme-color]"); if(m) m.setAttribute("content", dark?"#010204":"#faf9f6");
+}
+function boot(){
+  applyTheme();
+  if(window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme);
+  loadDB(); cur=(cats()[0]||{}).id||null;
+  try{ var c=localStorage.getItem(KEY_DB+"_cur"); if(c&&catById(c)) cur=c; }catch(e){}
+  render(); cloudRefreshStatus();
+
+  $("addform").addEventListener("submit",function(e){
+    e.preventDefault(); var inp=$("addtext"); if(!cur){ toast("先に区分を作って下さい"); return; }
+    if(addItem(inp.value)){ inp.value=""; inp.focus(); }
+  });
+  $("tabs").addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    if(b.id==="btn_cats"){ openCats(); return; }
+    cur=b.dataset.cat; showDone=false; try{ localStorage.setItem(KEY_DB+"_cur",cur); }catch(x){} render();
+  });
+  function onRow(e){
+    var b=e.target.closest("button"), row=e.target.closest(".row"); if(!b||!row) return;
+    var id=row.dataset.id;
+    if(b.classList.contains("chk")) toggleItem(id);
+    else if(b.classList.contains("t")) openEdit(id);
+    else if(b.classList.contains("x")) { removeItem(id); toast("消しました"); }
+  }
+  $("list").addEventListener("click",onRow);
+  $("donebox").addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    if(b.id==="btn_done"){ showDone=!showDone; renderList(); return; }
+    if(b.id==="btn_cleardone"){ var dn=itemsOf(cur,true).length; if(!confirm("完了した "+dn+" 件を消しますか？")) return; clearDone(cur); toast(dn+"件を消しました"); return; }
+    onRow(e);
+  });
+  $("btn_settings").addEventListener("click",openSettings);
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeModal(); });
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&loadCloudCfg()&&!CLOUD.ready) initCloud(); });
+  initCloud();
+}
+// テスト用の入口（画面の外から中身を確かめる）
+window.__todo={ get DB(){ return DB; }, set DB(v){ DB=normalize(v); persist(); render(); }, mergeDB:mergeDB, addItem:addItem, toggleItem:toggleItem, removeItem:removeItem, applyCats:applyCats, clearDone:clearDone, get cur(){ return cur; }, set cur(v){ cur=v; render(); } };
+boot();
+</script>
+</body>
+</html>
