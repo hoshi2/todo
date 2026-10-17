@@ -88,9 +88,35 @@ await page.click("#c_save");
 const names = await page.locator("#tabs button[data-cat]").allTextContents();
 ok("削除・追加・並べ替えが反映", JSON.stringify(names.map(s => s.replace(/\d+$/, ""))) === JSON.stringify(["仕事（不動産）","トレード","後回し","家","買うもの"]));
 
+group("並べ替え（↑↓）と左右スワイプ");
+await page.click("#tabs button[data-cat=c_work]");
+for (const t of ["A","B","C"]) { await page.fill("#addtext", t); await page.press("#addtext", "Enter"); }
+const texts = async () => page.locator("#list .row .t").allTextContents();
+ok("新しいものが上（C,B,A… 既存1件が最後）", JSON.stringify((await texts()).slice(0,3)) === JSON.stringify(["C","B","A"]));
+await page.click("#btn_sort");
+ok("並べ替え中は ↑↓ が出て丸が消える", (await page.locator("#list .row .mv").count()) > 0 && (await page.locator("#list .row .chk").count()) === 0);
+await page.locator("#list .row").nth(2).locator(".mv[data-d='-1']").click();
+ok("A が1つ上がる", JSON.stringify((await texts()).slice(0,3)) === JSON.stringify(["C","A","B"]));
+const stamps = await page.evaluate(() => Object.fromEntries(window.__todo.DB.items.map(x => [x.text, x._m])));
+await page.waitForTimeout(5);
+await page.locator("#list .row").nth(0).locator(".mv[data-d='1']").click();
+const changed = await page.evaluate(s => window.__todo.DB.items.filter(x => s[x.text] !== x._m).map(x => x.text).sort(), stamps);
+ok("動かした2件だけ _m が進む", JSON.stringify(changed) === JSON.stringify(["A","C"]));
+await page.click("#btn_sort");
+ok("完了で元の表示に戻る", (await page.locator("#list .row .chk").count()) === 4);
+const swipe = async (x1, x2) => page.evaluate(([x1, x2]) => {
+  const mk = (t, x) => new TouchEvent(t, { bubbles:true, touches: t === "touchend" ? [] : [new Touch({identifier:1, target:document.body, clientX:x, clientY:400})], changedTouches:[new Touch({identifier:1, target:document.body, clientX:x, clientY:400})] });
+  document.body.dispatchEvent(mk("touchstart", x1)); document.body.dispatchEvent(mk("touchend", x2));
+  return window.__todo.cur;
+}, [x1, x2]);
+ok("左へスワイプで次の区分", (await swipe(300, 100)) === "c_trade");
+ok("右へスワイプで前の区分", (await swipe(100, 300)) === "c_work");
+await page.click("#tabs button[data-cat=c_work]");
+
 group("再読み込みで残る");
 await page.reload();
-ok("やることが残る", await page.evaluate(() => window.__todo.DB.items.length === 1));
+ok("やることが残る", await page.evaluate(() => window.__todo.DB.items.length === 4));
+ok("順番が残る", JSON.stringify((await page.locator("#list .row .t").allTextContents()).slice(0,3)) === JSON.stringify(["A","C","B"]));
 ok("区分が残る", await page.locator("#tabs button[data-cat]").count() === 5);
 
 group("同期の合わせ方（mergeDB）");

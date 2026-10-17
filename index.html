@@ -88,6 +88,14 @@ html[data-theme="light"] .row.done .chk{color:#fff}
 .row .x{flex:0 0 auto;background:none;border:0;color:var(--txt3);padding:2px 4px;font-size:18px;line-height:1}
 .empty{text-align:center;color:var(--txt3);font-size:13px;padding:28px 10px}
 
+/* 一覧の上の小さな列（並べ替え） */
+.listhead{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:-4px 2px 6px;min-height:22px}
+.listhead button{background:none;border:0;color:var(--txt3);font-size:12.5px;font-weight:600;padding:4px 2px}
+.listhead button.on{color:var(--blue2)}
+.row .mv{flex:0 0 auto;background:var(--card2);border:1px solid var(--line);color:var(--txt2);border-radius:8px;width:34px;height:34px;font-size:15px;padding:0}
+.row .mv[disabled]{opacity:.3}
+.row.sorting .t{pointer-events:none}
+
 /* 完了の畳み */
 .donehead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 2px 8px}
 .donehead button{background:none;border:0;color:var(--txt3);font-size:12.5px;font-weight:600;padding:6px 2px;display:flex;align-items:center;gap:5px}
@@ -156,7 +164,7 @@ h4:first-child{margin-top:0}
 /* ============================================================
    Todo（やること） — 1枚の HTML・ビルド不要。保存は端末内（localStorage）＋ Firebase の同期（ぼぶると同じ方式）
    ============================================================ */
-var APP_VERSION="1.0.2";
+var APP_VERSION="1.1.0";
 var KEY_DB="todo_v1";               // 端末内：やること本体
 var KEY_CLOUD="todo_v1_cloud";      // 端末内だけ：{config, code}。DB には入れない
 var CLOUD_COLLECTION="todo";
@@ -179,10 +187,11 @@ function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"
 function fmtWhen(ms){ var d=new Date(ms); return (d.getMonth()+1)+"/"+d.getDate()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
 
 /* ---------- データ ----------
-   DB = { v:1, cats:[{id,name,order,_m}], items:[{id,text,cat,done,doneAt,created,_m}], deleted:{id:消した時刻} }
+   DB = { v:1, cats:[{id,name,order,_m}], items:[{id,text,cat,done,doneAt,created,order,_m}], deleted:{id:消した時刻} }
+   order = 区分の中の並び（小さいほど上）。無い古いものは新しい順に並ぶ。
    _m = 最後に変えた時刻（ms）。同期で合わせるときは 1件ごとに新しい方が勝つ。
    消したものは deleted に墓標を残し、相手側でも消える。 */
-var DB=null, cur=null, showDone=false;
+var DB=null, cur=null, showDone=false, sorting=false;
 function emptyDB(){ return {v:1,cats:[],items:[],deleted:{}}; }
 function freshDB(){
   var db=emptyDB(), t=now();
@@ -205,14 +214,17 @@ function persist(){ try{ localStorage.setItem(KEY_DB, JSON.stringify(DB)); }catc
 function save(){ persist(); render(); cloudPushSoon(); }
 function cats(){ return DB.cats.slice().sort(function(a,b){ return (a.order||0)-(b.order||0); }); }
 function catById(id){ for(var i=0;i<DB.cats.length;i++) if(DB.cats[i].id===id) return DB.cats[i]; return null; }
-function itemsOf(cid,done){ return DB.items.filter(function(x){ return x.cat===cid && !!x.done===done; }).sort(function(a,b){ return done ? (b.doneAt||0)-(a.doneAt||0) : (b.created||0)-(a.created||0); }); }
+// 並びの値。order が無い古いものは「新しいほど上」になるよう created から作る
+function ord(x){ return (typeof x.order==="number")?x.order:-(x.created||0); }
+function itemsOf(cid,done){ return DB.items.filter(function(x){ return x.cat===cid && !!x.done===done; }).sort(function(a,b){ return done ? (b.doneAt||0)-(a.doneAt||0) : ord(a)-ord(b); }); }
 function countOf(cid){ return DB.items.filter(function(x){ return x.cat===cid; }).length; }
 function openCount(cid){ return DB.items.filter(function(x){ return x.cat===cid && !x.done; }).length; }
 
 /* ---------- 操作（全部ここを通す。_m を押す） ---------- */
 function addItem(text){
   text=String(text||"").trim(); if(!text) return null;
-  var it={id:uid(),text:text,cat:cur,done:false,doneAt:null,created:now(),_m:now()};
+  var open=itemsOf(cur,false), top=open.length?ord(open[0])-1:0;   // 一番上に入れる
+  var it={id:uid(),text:text,cat:cur,done:false,doneAt:null,created:now(),order:top,_m:now()};
   DB.items.push(it); save(); return it;
 }
 function toggleItem(id){
@@ -222,10 +234,20 @@ function toggleItem(id){
 function updateItem(id,text,cid){
   var it=DB.items.find(function(x){ return x.id===id; }); if(!it) return;
   text=String(text||"").trim(); if(!text) return;
-  it.text=text; if(cid&&catById(cid)) it.cat=cid; it._m=now(); save();
+  it.text=text;
+  if(cid&&catById(cid)&&cid!==it.cat){ var open=itemsOf(cid,false); it.cat=cid; it.order=open.length?ord(open[0])-1:0; }
+  it._m=now(); save();
 }
 function removeItem(id){
   DB.items=DB.items.filter(function(x){ return x.id!==id; }); DB.deleted[id]=now(); save();
+}
+// 区分の中で1つ上／下へ。並びを 0,1,2… に振り直し、値が変わったものだけ _m を押す
+function moveItem(id,dir){
+  var open=itemsOf(cur,false), i=open.findIndex(function(x){ return x.id===id; }), j=i+dir;
+  if(i<0||j<0||j>=open.length) return;
+  var tmp=open[i]; open[i]=open[j]; open[j]=tmp;
+  var t=now(); open.forEach(function(x,k){ if(x.order!==k){ x.order=k; x._m=t; } });
+  save();
 }
 function clearDone(cid){
   var t=now(), n=0;
@@ -290,17 +312,21 @@ function renderTabs(){
 }
 var ICON_CHK="<svg class='ic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7'/></svg>";
 var ICON_CHEV="<svg class='ic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg>";
-function rowHtml(it){
-  return "<div class='row"+(it.done?" done":"")+"' data-id='"+esc(it.id)+"'>"+
-    "<button type='button' class='chk' aria-label='完了'>"+ICON_CHK+"</button>"+
+function rowHtml(it,i,n){
+  var sort=sorting&&!it.done;
+  return "<div class='row"+(it.done?" done":"")+(sort?" sorting":"")+"' data-id='"+esc(it.id)+"'>"+
+    (sort?"":"<button type='button' class='chk' aria-label='完了'>"+ICON_CHK+"</button>")+
     "<button type='button' class='t'>"+esc(it.text)+"</button>"+
+    (sort?"<button type='button' class='mv' data-d='-1' aria-label='上へ'"+(i===0?" disabled":"")+">↑</button><button type='button' class='mv' data-d='1' aria-label='下へ'"+(i===n-1?" disabled":"")+">↓</button>":"")+
     (it.done?"<button type='button' class='x' aria-label='削除'>×</button>":"")+
     "</div>";
 }
 function renderList(){
   if(!cur){ $("list").innerHTML="<div class='card'><div class='empty'>区分がありません。右上の鉛筆から足して下さい</div></div>"; $("donebox").innerHTML=""; return; }
   var open=itemsOf(cur,false), done=itemsOf(cur,true);
-  $("list").innerHTML="<div class='card'>"+(open.length?open.map(rowHtml).join(""):"<div class='empty'>"+(done.length?"全部終わりました":"まだ何もありません")+"</div>")+"</div>";
+  if(open.length<2) sorting=false;
+  var head=open.length>=2?"<div class='listhead'><button type='button' id='btn_sort' class='"+(sorting?"on":"")+"'>"+(sorting?"完了":"並べ替え")+"</button></div>":"";
+  $("list").innerHTML=head+"<div class='card'>"+(open.length?open.map(function(it,i){ return rowHtml(it,i,open.length); }).join(""):"<div class='empty'>"+(done.length?"全部終わりました":"まだ何もありません")+"</div>")+"</div>";
   var h="";
   if(done.length){
     h+="<div class='donehead'><button type='button' id='btn_done' class='"+(showDone?"open":"")+"'>"+ICON_CHEV+"完了 "+done.length+"件</button>"+
@@ -515,6 +541,9 @@ function cloudPushNow(){
   cloudRef().set({data:data,updatedAt:t,app:"todo",v:1}).then(function(){ CLOUD.lastData=data; CLOUD.lastAt=t; cloudSetError(null); }).catch(cloudSetError);
 }
 
+function gotoCat(id){ if(!catById(id)) return; cur=id; showDone=false; sorting=false; try{ localStorage.setItem(KEY_DB+"_cur",cur); }catch(x){} render(); }
+function swipeCat(dir){ var cs=cats(), i=cs.findIndex(function(c){ return c.id===cur; }), j=i+dir; if(i<0||j<0||j>=cs.length) return false; gotoCat(cs[j].id); return true; }
+
 /* ---------- 起動 ---------- */
 function applyTheme(){
   var dark=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -535,12 +564,23 @@ function boot(){
   $("tabs").addEventListener("click",function(e){
     var b=e.target.closest("button"); if(!b) return;
     if(b.id==="btn_cats"){ openCats(); return; }
-    cur=b.dataset.cat; showDone=false; try{ localStorage.setItem(KEY_DB+"_cur",cur); }catch(x){} render();
+    gotoCat(b.dataset.cat);
   });
+  // 一覧の上で左右にすべらせると隣の区分へ（上下のスクロールとは区別する）
+  var sw=null;
+  document.addEventListener("touchstart",function(e){ if($("modal").firstChild||e.touches.length!==1){ sw=null; return; } sw={x:e.touches[0].clientX,y:e.touches[0].clientY}; },{passive:true});
+  document.addEventListener("touchend",function(e){
+    if(!sw) return; var t=e.changedTouches[0], dx=t.clientX-sw.x, dy=t.clientY-sw.y; sw=null;
+    if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.6) return;
+    swipeCat(dx<0?1:-1);
+  },{passive:true});
   function onRow(e){
-    var b=e.target.closest("button"), row=e.target.closest(".row"); if(!b||!row) return;
+    var b=e.target.closest("button"); if(!b) return;
+    if(b.id==="btn_sort"){ sorting=!sorting; renderList(); return; }
+    var row=e.target.closest(".row"); if(!row) return;
     var id=row.dataset.id;
-    if(b.classList.contains("chk")) toggleItem(id);
+    if(b.classList.contains("mv")) moveItem(id,+b.dataset.d);
+    else if(b.classList.contains("chk")) toggleItem(id);
     else if(b.classList.contains("t")) openEdit(id);
     else if(b.classList.contains("x")) { removeItem(id); toast("消しました"); }
   }
@@ -557,7 +597,7 @@ function boot(){
   initCloud();
 }
 // テスト用の入口（画面の外から中身を確かめる）
-window.__todo={ get DB(){ return DB; }, set DB(v){ DB=normalize(v); persist(); render(); }, mergeDB:mergeDB, addItem:addItem, toggleItem:toggleItem, removeItem:removeItem, applyCats:applyCats, clearDone:clearDone, get cur(){ return cur; }, set cur(v){ cur=v; render(); } };
+window.__todo={ get DB(){ return DB; }, set DB(v){ DB=normalize(v); persist(); render(); }, mergeDB:mergeDB, addItem:addItem, toggleItem:toggleItem, removeItem:removeItem, applyCats:applyCats, clearDone:clearDone, moveItem:moveItem, swipeCat:swipeCat, get cur(){ return cur; }, set cur(v){ cur=v; render(); } };
 boot();
 </script>
 </body>
